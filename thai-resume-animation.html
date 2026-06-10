@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Thai Le — Senior Software Engineer</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&family=Space+Grotesk:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --navy: #0A0F1E;
+    --navy2: #111827;
+    --panel: #1A2540;
+    --cyan: #00D4FF;
+    --cyan2: #00A8CC;
+    --white: #F0F4FF;
+    --muted: #8899BB;
+    --green: #00FF9D;
+    --orange: #FF6B35;
+  }
+
+  html, body {
+    width: 100%; height: 100%;
+    background: var(--navy);
+    color: var(--white);
+    font-family: 'Space Grotesk', sans-serif;
+    overflow: hidden;
+  }
+
+  #stage {
+    width: 100vw; height: 100vh;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* ── CANVAS (network graph background) ── */
+  #net-canvas {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 1s;
+  }
+  #net-canvas.visible { opacity: 1; }
+
+  /* ── SCENES ── */
+  .scene {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.7s ease, transform 0.7s ease;
+    pointer-events: none;
+    text-align: center;
+    padding: 40px;
+  }
+  .scene.active {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: all;
+  }
+  .scene.exit {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+
+  /* ── SCENE 1: BOOT / INTRO ── */
+  #s1 .boot-line {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--cyan);
+    opacity: 0;
+    text-align: left;
+    line-height: 1.9;
+    transform: translateX(-10px);
+    transition: opacity 0.4s, transform 0.4s;
+  }
+  #s1 .boot-line.show { opacity: 1; transform: translateX(0); }
+  #s1 .boot-block {
+    background: rgba(0,212,255,0.04);
+    border: 1px solid rgba(0,212,255,0.15);
+    border-radius: 8px;
+    padding: 24px 32px;
+    max-width: 520px;
+    width: 100%;
+  }
+
+  /* ── SCENE 2: NAME REVEAL ── */
+  #s2 .name-wrap { position: relative; }
+  #s2 .tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--cyan);
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+    opacity: 0;
+    animation: fadeUp 0.6s 0.2s forwards;
+  }
+  #s2 .name {
+    font-size: clamp(42px, 8vw, 84px);
+    font-weight: 700;
+    line-height: 1;
+    background: linear-gradient(135deg, #F0F4FF 30%, var(--cyan) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    opacity: 0;
+    animation: fadeUp 0.7s 0.5s forwards;
+  }
+  #s2 .title {
+    font-size: 18px;
+    font-weight: 300;
+    color: var(--muted);
+    margin-top: 12px;
+    letter-spacing: 1px;
+    opacity: 0;
+    animation: fadeUp 0.6s 0.9s forwards;
+  }
+  #s2 .loc {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--cyan2);
+    margin-top: 8px;
+    opacity: 0;
+    animation: fadeUp 0.5s 1.2s forwards;
+  }
+  #s2 .yrs-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(0,212,255,0.1);
+    border: 1px solid var(--cyan);
+    border-radius: 999px;
+    padding: 6px 20px;
+    margin-top: 24px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--cyan);
+    opacity: 0;
+    animation: fadeUp 0.5s 1.5s forwards;
+  }
+  #s2 .yrs-badge span { color: var(--white); }
+
+  /* ── SCENE 3: SKILLS ── */
+  #s3 .s-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: var(--cyan);
+    text-transform: uppercase;
+    margin-bottom: 32px;
+  }
+  #s3 .skills-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    max-width: 640px;
+    width: 100%;
+  }
+  .skill-pill {
+    background: var(--panel);
+    border: 1px solid rgba(0,212,255,0.18);
+    border-radius: 10px;
+    padding: 14px 10px;
+    font-size: 13px;
+    font-weight: 600;
+    opacity: 0;
+    transform: scale(0.88);
+    transition: opacity 0.4s, transform 0.4s;
+    position: relative;
+    overflow: hidden;
+  }
+  .skill-pill::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0;
+    height: 2px;
+    width: var(--pct);
+    background: linear-gradient(90deg, var(--cyan), var(--green));
+    transition: width 1.2s ease;
+  }
+  .skill-pill.show { opacity: 1; transform: scale(1); }
+  .skill-pill .pct {
+    display: block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--cyan);
+    margin-top: 3px;
+    font-weight: 400;
+  }
+
+  /* ── SCENE 4: CAREER TIMELINE ── */
+  #s4 .tl-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: var(--cyan);
+    text-transform: uppercase;
+    margin-bottom: 28px;
+  }
+  #s4 .timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    max-width: 560px;
+    width: 100%;
+    text-align: left;
+  }
+  .tl-item {
+    display: flex;
+    gap: 18px;
+    opacity: 0;
+    transform: translateX(-16px);
+    transition: opacity 0.5s, transform 0.5s;
+    padding-bottom: 20px;
+    position: relative;
+  }
+  .tl-item.show { opacity: 1; transform: translateX(0); }
+  .tl-dot-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 14px;
+    padding-top: 4px;
+  }
+  .tl-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--cyan);
+    box-shadow: 0 0 8px var(--cyan);
+    flex-shrink: 0;
+  }
+  .tl-line {
+    flex: 1;
+    width: 1px;
+    background: rgba(0,212,255,0.2);
+    margin-top: 4px;
+  }
+  .tl-item:last-child .tl-line { display: none; }
+  .tl-content .co {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--white);
+  }
+  .tl-content .ro {
+    font-size: 13px;
+    color: var(--cyan2);
+    margin: 2px 0;
+  }
+  .tl-content .yr {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  /* ── SCENE 5: IMPACT NUMBERS ── */
+  #s5 .imp-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: var(--cyan);
+    text-transform: uppercase;
+    margin-bottom: 36px;
+  }
+  #s5 .impact-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+    max-width: 520px;
+    width: 100%;
+  }
+  .imp-card {
+    background: var(--panel);
+    border: 1px solid rgba(0,212,255,0.15);
+    border-radius: 14px;
+    padding: 24px 20px;
+    opacity: 0;
+    transform: translateY(16px);
+    transition: opacity 0.5s, transform 0.5s;
+  }
+  .imp-card.show { opacity: 1; transform: translateY(0); }
+  .imp-card .num {
+    font-size: 42px;
+    font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--cyan);
+    line-height: 1;
+  }
+  .imp-card .num-suffix { color: var(--green); font-size: 28px; }
+  .imp-card .desc {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 6px;
+    line-height: 1.4;
+  }
+
+  /* ── SCENE 6: CLIENTS / FINAL ── */
+  #s6 .fin-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: var(--cyan);
+    text-transform: uppercase;
+    margin-bottom: 20px;
+    opacity: 0;
+    animation: fadeUp 0.5s 0.2s forwards;
+  }
+  #s6 .fin-name {
+    font-size: clamp(32px, 6vw, 60px);
+    font-weight: 700;
+    background: linear-gradient(135deg, #F0F4FF 30%, var(--cyan) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    opacity: 0;
+    animation: fadeUp 0.6s 0.5s forwards;
+  }
+  #s6 .fin-sub {
+    font-size: 15px;
+    color: var(--muted);
+    margin-top: 8px;
+    opacity: 0;
+    animation: fadeUp 0.5s 0.8s forwards;
+  }
+  #s6 .clients {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: 32px;
+    max-width: 540px;
+  }
+  .cl-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    padding: 6px 14px;
+    border-radius: 6px;
+    border: 1px solid rgba(0,212,255,0.25);
+    color: var(--muted);
+    opacity: 0;
+    transform: scale(0.9);
+    transition: opacity 0.4s, transform 0.4s;
+  }
+  .cl-tag.show { opacity: 1; transform: scale(1); }
+  #s6 .fin-cta {
+    margin-top: 36px;
+    font-size: 14px;
+    color: var(--cyan);
+    border: 1px solid var(--cyan);
+    border-radius: 8px;
+    padding: 12px 32px;
+    cursor: pointer;
+    opacity: 0;
+    animation: fadeUp 0.5s 1.8s forwards;
+    transition: background 0.3s;
+    background: transparent;
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    pointer-events: all;
+  }
+  #s6 .fin-cta:hover { background: rgba(0,212,255,0.12); }
+
+  /* ── PROGRESS BAR ── */
+  #progress {
+    position: fixed;
+    bottom: 0; left: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--cyan), var(--green));
+    transition: width 0.4s linear;
+    z-index: 99;
+  }
+
+  /* ── SCENE DOTS ── */
+  #dots {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 8px;
+    z-index: 99;
+  }
+  .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--muted);
+    transition: background 0.3s, transform 0.3s;
+  }
+  .dot.active { background: var(--cyan); transform: scale(1.5); }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes pulse-ring {
+    0%   { transform: scale(1); opacity: 0.7; }
+    100% { transform: scale(2.2); opacity: 0; }
+  }
+
+  /* replay button */
+  #replay {
+    position: fixed;
+    top: 20px; right: 20px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 6px;
+    padding: 6px 12px;
+    cursor: pointer;
+    z-index: 99;
+    transition: color 0.2s, border-color 0.2s;
+  }
+  #replay:hover { color: var(--cyan); border-color: var(--cyan); }
+
+  /* scan line overlay */
+  #scan {
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.03) 2px,
+      rgba(0,0,0,0.03) 4px
+    );
+    pointer-events: none;
+    z-index: 50;
+  }
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="net-canvas"></canvas>
+  <div id="scan"></div>
+
+  <!-- SCENE 1: Boot sequence -->
+  <div class="scene" id="s1">
+    <div class="boot-block">
+      <div class="boot-line" id="bl1">$ initializing profile_loader v2.0...</div>
+      <div class="boot-line" id="bl2">$ target: thai_le.json</div>
+      <div class="boot-line" id="bl3">$ experience: 15+ years ........... [OK]</div>
+      <div class="boot-line" id="bl4">$ domains: networking, firmware, fullstack [OK]</div>
+      <div class="boot-line" id="bl5">$ location: Seattle, WA ............ [OK]</div>
+      <div class="boot-line" id="bl6" style="color:var(--green)">$ ready. launching resume animation...</div>
+    </div>
+  </div>
+
+  <!-- SCENE 2: Name reveal -->
+  <div class="scene" id="s2">
+    <div class="name-wrap">
+      <div class="tag">// Senior Software Engineer</div>
+      <div class="name">Thai Le</div>
+      <div class="title">Networking · Embedded Firmware · Full-Stack</div>
+      <div class="loc">📍 Seattle, WA · Redmond area</div>
+      <div class="yrs-badge"><span>15+</span> years of engineering excellence</div>
+    </div>
+  </div>
+
+  <!-- SCENE 3: Core skills -->
+  <div class="scene" id="s3">
+    <div class="s-label">// Core Technical Skills</div>
+    <div class="skills-grid">
+      <div class="skill-pill" style="--pct:95%">C / C++ <span class="pct">Systems-level expert</span></div>
+      <div class="skill-pill" style="--pct:90%">Python <span class="pct">Automation & tooling</span></div>
+      <div class="skill-pill" style="--pct:92%">Linux <span class="pct">Kernel & embedded</span></div>
+      <div class="skill-pill" style="--pct:88%">Networking <span class="pct">TCP/IP, BGP, OSPF</span></div>
+      <div class="skill-pill" style="--pct:85%">CI/CD <span class="pct">Pipelines & DevOps</span></div>
+      <div class="skill-pill" style="--pct:82%">Full-Stack <span class="pct">Web & APIs</span></div>
+    </div>
+  </div>
+
+  <!-- SCENE 4: Career timeline -->
+  <div class="scene" id="s4">
+    <div class="tl-label">// Career Timeline</div>
+    <div class="timeline">
+      <div class="tl-item">
+        <div class="tl-dot-col"><div class="tl-dot"></div><div class="tl-line"></div></div>
+        <div class="tl-content">
+          <div class="co">XKL LLC</div>
+          <div class="ro">Senior Software Engineer · Redmond, WA</div>
+          <div class="yr">Networking systems & optical transport</div>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot-col"><div class="tl-dot"></div><div class="tl-line"></div></div>
+        <div class="tl-content">
+          <div class="co">Alcatel-Lucent</div>
+          <div class="ro">Software Engineer · Embedded firmware</div>
+          <div class="yr">Telecom infrastructure · Protocol stack development</div>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot-col"><div class="tl-dot"></div><div class="tl-line"></div></div>
+        <div class="tl-content">
+          <div class="co">Nortel</div>
+          <div class="ro">Network Engineer · Systems development</div>
+          <div class="yr">Carrier-grade networking solutions</div>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot-col"><div class="tl-dot"></div><div class="tl-line"></div></div>
+        <div class="tl-content">
+          <div class="co">Freelance / Contract</div>
+          <div class="ro">Senior Engineer · Enterprise clients</div>
+          <div class="yr">AT&T · Verizon · Meta — automation & platform work</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCENE 5: Impact numbers -->
+  <div class="scene" id="s5">
+    <div class="imp-label">// Impact by the Numbers</div>
+    <div class="impact-grid">
+      <div class="imp-card">
+        <div class="num">20<span class="num-suffix">+</span></div>
+        <div class="desc">Engineers led across distributed teams</div>
+      </div>
+      <div class="imp-card">
+        <div class="num">15<span class="num-suffix">+</span></div>
+        <div class="desc">Years of production systems experience</div>
+      </div>
+      <div class="imp-card">
+        <div class="num">5<span class="num-suffix">★</span></div>
+        <div class="desc">Enterprise clients: AT&T, Verizon, Meta &amp; more</div>
+      </div>
+      <div class="imp-card">
+        <div class="num">3<span class="num-suffix">+</span></div>
+        <div class="desc">Languages at expert level: C, C++, Python</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCENE 6: Final / CTA -->
+  <div class="scene" id="s6">
+    <div class="fin-tag">// Open to Opportunities</div>
+    <div class="fin-name">Thai Le</div>
+    <div class="fin-sub">Seattle · Meta · Microsoft · Amazon Kuiper · SpaceX Starlink</div>
+    <div class="clients" id="cl-row">
+      <div class="cl-tag">AT&amp;T</div>
+      <div class="cl-tag">Verizon</div>
+      <div class="cl-tag">Alcatel-Lucent</div>
+      <div class="cl-tag">Meta</div>
+      <div class="cl-tag">XKL LLC</div>
+      <div class="cl-tag">Nortel</div>
+    </div>
+    <button class="fin-cta" id="replay-btn" onclick="startAnimation()">↺ Replay Animation</button>
+  </div>
+</div>
+
+<!-- Progress & nav -->
+<div id="progress"></div>
+<div id="dots"></div>
+<button id="replay" onclick="startAnimation()">↺ replay</button>
+
+<script>
+const SCENES = ['s1','s2','s3','s4','s5','s6'];
+const DURATIONS = [3200, 3500, 3800, 4200, 3800, 0]; // ms per scene (0 = stay)
+let currentScene = -1;
+let timer = null;
+
+// ── NETWORK CANVAS ──
+const canvas = document.getElementById('net-canvas');
+const ctx = canvas.getContext('2d');
+let nodes = [], animFrame;
+
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+function initNodes(n = 40) {
+  nodes = Array.from({length: n}, () => ({
+    x: Math.random() * canvas.width,
+    y: Math.random() * canvas.height,
+    vx: (Math.random() - 0.5) * 0.4,
+    vy: (Math.random() - 0.5) * 0.4,
+    r: Math.random() * 2.5 + 1,
+  }));
+}
+
+function drawNet() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const D = 140;
+  nodes.forEach(n => {
+    n.x += n.vx; n.y += n.vy;
+    if (n.x < 0 || n.x > canvas.width)  n.vx *= -1;
+    if (n.y < 0 || n.y > canvas.height) n.vy *= -1;
+  });
+  for (let i = 0; i < nodes.length; i++) {
+    for (let j = i+1; j < nodes.length; j++) {
+      const dx = nodes[i].x - nodes[j].x;
+      const dy = nodes[i].y - nodes[j].y;
+      const d = Math.sqrt(dx*dx + dy*dy);
+      if (d < D) {
+        ctx.strokeStyle = `rgba(0,212,255,${(1-d/D)*0.18})`;
+        ctx.lineWidth = 0.8;
+        ctx.beginPath();
+        ctx.moveTo(nodes[i].x, nodes[i].y);
+        ctx.lineTo(nodes[j].x, nodes[j].y);
+        ctx.stroke();
+      }
+    }
+  }
+  nodes.forEach(n => {
+    ctx.fillStyle = 'rgba(0,212,255,0.45)';
+    ctx.beginPath();
+    ctx.arc(n.x, n.y, n.r, 0, Math.PI*2);
+    ctx.fill();
+  });
+  animFrame = requestAnimationFrame(drawNet);
+}
+
+// ── SCENE MANAGER ──
+function showScene(idx) {
+  SCENES.forEach((id, i) => {
+    const el = document.getElementById(id);
+    el.classList.remove('active','exit');
+    if (i < idx) el.classList.add('exit');
+  });
+  const el = document.getElementById(SCENES[idx]);
+  requestAnimationFrame(() => el.classList.add('active'));
+  currentScene = idx;
+
+  // update dots
+  document.querySelectorAll('.dot').forEach((d,i) => {
+    d.classList.toggle('active', i === idx);
+  });
+
+  // progress bar
+  const pct = idx / (SCENES.length - 1) * 100;
+  document.getElementById('progress').style.width = pct + '%';
+
+  // scene-specific animations
+  if (idx === 0) animateBootLines();
+  if (idx === 2) animateSkills();
+  if (idx === 3) animateTimeline();
+  if (idx === 4) animateImpact();
+  if (idx === 5) animateClients();
+}
+
+function next() {
+  if (currentScene < SCENES.length - 1) {
+    showScene(currentScene + 1);
+    scheduleNext();
+  }
+}
+
+function scheduleNext() {
+  clearTimeout(timer);
+  const d = DURATIONS[currentScene];
+  if (d > 0) timer = setTimeout(next, d);
+}
+
+// ── SCENE 1: boot lines ──
+function animateBootLines() {
+  const lines = document.querySelectorAll('#s1 .boot-line');
+  lines.forEach(l => l.classList.remove('show'));
+  let delay = 0;
+  lines.forEach(l => {
+    setTimeout(() => l.classList.add('show'), delay);
+    delay += 430;
+  });
+}
+
+// ── SCENE 3: skill pills ──
+function animateSkills() {
+  const pills = document.querySelectorAll('.skill-pill');
+  pills.forEach(p => p.classList.remove('show'));
+  pills.forEach((p, i) => {
+    setTimeout(() => p.classList.add('show'), i * 160);
+  });
+}
+
+// ── SCENE 4: timeline items ──
+function animateTimeline() {
+  const items = document.querySelectorAll('.tl-item');
+  items.forEach(i => i.classList.remove('show'));
+  items.forEach((item, i) => {
+    setTimeout(() => item.classList.add('show'), i * 400);
+  });
+}
+
+// ── SCENE 5: impact cards ──
+function animateImpact() {
+  const cards = document.querySelectorAll('.imp-card');
+  cards.forEach(c => c.classList.remove('show'));
+  cards.forEach((c, i) => {
+    setTimeout(() => c.classList.add('show'), i * 250);
+  });
+}
+
+// ── SCENE 6: client tags ──
+function animateClients() {
+  const tags = document.querySelectorAll('.cl-tag');
+  tags.forEach(t => t.classList.remove('show'));
+  tags.forEach((t, i) => {
+    setTimeout(() => t.classList.add('show'), 1000 + i * 150);
+  });
+}
+
+// ── BUILD DOTS ──
+function buildDots() {
+  const dotsEl = document.getElementById('dots');
+  dotsEl.innerHTML = '';
+  SCENES.forEach((_, i) => {
+    const d = document.createElement('div');
+    d.className = 'dot';
+    d.onclick = () => { clearTimeout(timer); showScene(i); scheduleNext(); };
+    dotsEl.appendChild(d);
+  });
+}
+
+// ── START ──
+function startAnimation() {
+  clearTimeout(timer);
+  if (animFrame) cancelAnimationFrame(animFrame);
+  initNodes(42);
+  drawNet();
+  canvas.classList.add('visible');
+  buildDots();
+  // reset all scenes
+  SCENES.forEach(id => {
+    const el = document.getElementById(id);
+    el.classList.remove('active','exit');
+  });
+  showScene(0);
+  scheduleNext();
+}
+
+window.addEventListener('load', startAnimation);
+
+// keyboard nav
+window.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === ' ') { clearTimeout(timer); next(); }
+  if (e.key === 'ArrowLeft' && currentScene > 0) {
+    clearTimeout(timer);
+    showScene(currentScene - 1);
+    scheduleNext();
+  }
+});
+</script>
+</body>
+</html>
